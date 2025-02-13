@@ -1,29 +1,49 @@
-name: Deployment Pipeline
-
+name: deploy
 on:
   push:
     branches:
       - main
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Deploy Application
-        run: |
-          # Example: Restart the server using a script
-          ssh user@your-server-ip "cd /path/to/app && git pull origin main && systemctl restart your-app.service"
+          python-version: 3.11
+      # Deploy to server
+      - name: Deploy to Staging Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{secrets.SERVER_HOST}}
+          key: ${{secrets.SERVER_SSH_KEY}}
+          username: ${{secrets.SERVER_USERNAME}}
+          script: |
+            echo “Starting deployment...”
+            # Create and navigate to project directory
+            mkdir -p praise-keyz-fastapi-stage12-task
+            cd praise-keyz-fastapi-stage12-task
+            # Clone the repository into the project directory
+            git clone https://github.com/PraiseKeyz/fastapi-book-project.git .
+            # Pull latest changes
+            echo “Pulling latest changes...”
+            git fetch --all
+            git pull origin main
+            # Setup virtual environment
+            echo “Setting up virtual environment...”
+            python3 -m venv venv || exit 1
+            source venv/bin/activate || exit 1
+            #Install fastapi
+            pip install fastapi || exit 1
+            echo “FastAPI installed successfully”
+            # Install dependencies
+            echo “Installing dependencies...”
+            pip install -r requirements.txt || exit 1
+            # Stop existing application if running
+            echo “Stopping existing application...”
+            killall uvicorn || echo “No existing process found”
+            echo “Application stopped successfully”
+            # Start application
+            echo “Starting application...”
+            nohup uvicorn main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 &
+            echo “Application started successfully”
