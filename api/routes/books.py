@@ -28,7 +28,9 @@ db.books = {
     ),
 }
 
-
+@router.get("/test")
+async def test_endpoint():
+    return {"message": "Hello, World!"}
 
 
 @router.post(“/”, status_code=status.HTTP_201_CREATED)
